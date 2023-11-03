@@ -51,5 +51,12 @@ module.exports = {
         });
 
         await interaction.reply('Started recording!');
+
+        setTimeout(() => {
+            output.close();
+            console.log('Recording stopped after 10 seconds.');
+            connection.destroy();
+            console.log('Left the voice channel.');
+        }, 10000);
     },
 };
