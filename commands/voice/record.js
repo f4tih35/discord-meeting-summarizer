@@ -23,16 +23,41 @@ module.exports = {
             selfMute: false,
         });
 
-        const userId = interaction.member.id;
-        const writeStream = fs.createWriteStream('out.pcm');
-        const listenStream = connection.receiver.subscribe(userId);
+        const audioStreams = new Map();
 
-        const opusDecoder = new prism.opus.Decoder({
-            frameSize: 960,
-            channels: 2,
-            rate: 48000,
-        });
+        for (const [memberId, member] of voiceChannel.members) {
+            const audioStream = connection.receiver.subscribe(memberId, {
+                end: {
+                    behavior: 'afterSilence',
+                    duration: 100,
+                },
+            });
 
-        listenStream.pipe(opusDecoder).pipe(writeStream);
+            const outputPath = path.join(process.cwd(), `/recordings/user-${memberId}.pcm`);
+            const writeStream = fs.createWriteStream(outputPath);
+
+            const opusDecoder = new prism.opus.Decoder({
+                frameSize: 960,
+                channels: 2,
+                rate: 48000,
+            });
+
+            audioStream.pipe(opusDecoder).pipe(writeStream);
+            audioStreams.set(memberId, {
+                audioStream,
+                writeStream,
+            });
+        }
+
+        await interaction.reply('Recording started!');
+
+        setTimeout(() => {
+            audioStreams.forEach((streamObj) => {
+                streamObj.audioStream.destroy();
+                streamObj.writeStream.end();
+            });
+            connection.destroy();
+            interaction.followUp('Recording is complete, and the bot has disconnected.');
+        }, 5000);
     },
 };
