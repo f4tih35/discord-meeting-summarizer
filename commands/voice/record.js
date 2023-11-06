@@ -1,62 +1,38 @@
-const { SlashCommandBuilder } = require('discord.js');
-const { joinVoiceChannel, createAudioResource, StreamType, createAudioPlayer } = require('@discordjs/voice');
-const fs = require('fs');
+const {SlashCommandBuilder} = require('discord.js');
+const {joinVoiceChannel} = require('@discordjs/voice');
+const fs = require('node:fs');
+const path = require('node:path');
 const prism = require('prism-media');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('record')
-        .setDescription('Joins your voice channel and starts recording.'),
+        .setDescription('Joins your voice channel and starts processing your voice.'),
     async execute(interaction) {
         if (!interaction.member.voice.channelId) {
             return interaction.reply('You need to be in a voice channel to use this command!');
         }
 
         const voiceChannel = interaction.member.voice.channel;
+
         const connection = joinVoiceChannel({
             channelId: voiceChannel.id,
             guildId: voiceChannel.guild.id,
             adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            selfDeaf: false,
+            selfMute: false,
         });
 
-        const audioPlayer = createAudioPlayer();
-        connection.subscribe(audioPlayer);
+        const userId = interaction.member.id;
+        const writeStream = fs.createWriteStream('out.pcm');
+        const listenStream = connection.receiver.subscribe(userId);
 
-        const output = fs.createWriteStream(`./record-${Date.now()}.pcm`);
-        const audioResource = createAudioResource(new prism.opus.Decoder({
-            rate: 48000,
-            channels: 2,
+        const opusDecoder = new prism.opus.Decoder({
             frameSize: 960,
-        }));
-
-        audioPlayer.play(audioResource);
-
-        connection.receiver.speaking.on('start', (userId) => {
-            console.log(`User ${userId} started speaking`);
-            const opusStream = connection.receiver.subscribe(userId, {
-                end: {
-                    behavior: StreamType.Raw,
-                },
-            });
-            const opusDecoder = new prism.opus.Decoder({
-                rate: 48000,
-                channels: 2,
-                frameSize: 960,
-            });
-            opusStream.pipe(opusDecoder).pipe(output);
+            channels: 2,
+            rate: 48000,
         });
 
-        connection.receiver.speaking.on('end', (userId) => {
-            console.log(`User ${userId} stopped speaking`);
-        });
-
-        await interaction.reply('Started recording!');
-
-        setTimeout(() => {
-            output.close();
-            console.log('Recording stopped after 10 seconds.');
-            connection.destroy();
-            console.log('Left the voice channel.');
-        }, 10000);
+        listenStream.pipe(opusDecoder).pipe(writeStream);
     },
 };
