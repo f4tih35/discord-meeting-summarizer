@@ -1,7 +1,7 @@
-const {SlashCommandBuilder} = require('discord.js');
-const {joinVoiceChannel} = require('@discordjs/voice');
-const fs = require('node:fs');
-const path = require('node:path');
+const { SlashCommandBuilder } = require('discord.js');
+const { joinVoiceChannel } = require('@discordjs/voice');
+const fs = require('fs');
+const path = require('path');
 const prism = require('prism-media');
 
 module.exports = {
@@ -10,11 +10,14 @@ module.exports = {
         .setDescription('Joins your voice channel and starts processing your voice.'),
     async execute(interaction) {
         if (!interaction.member.voice.channelId) {
-            return interaction.reply('You need to be in a voice channel to use this command!');
+            await interaction.reply('You need to be in a voice channel to use this command!');
+            return;
         }
 
-        const voiceChannel = interaction.member.voice.channel;
+        let audioIdx = 0;
+        const userAudioMap = new Map();
 
+        const voiceChannel = interaction.member.voice.channel;
         const connection = joinVoiceChannel({
             channelId: voiceChannel.id,
             guildId: voiceChannel.guild.id,
@@ -23,9 +26,7 @@ module.exports = {
             selfMute: false,
         });
 
-        const audioStreams = new Map();
-
-        for (const [memberId, member] of voiceChannel.members) {
+        voiceChannel.members.forEach((member, memberId) => {
             const audioStream = connection.receiver.subscribe(memberId, {
                 end: {
                     behavior: 'afterSilence',
@@ -33,31 +34,43 @@ module.exports = {
                 },
             });
 
-            const outputPath = path.join(process.cwd(), `/recordings/user-${memberId}.pcm`);
-            const writeStream = fs.createWriteStream(outputPath);
+            audioStream.on('data', (chunk) => {
+                let userAudio = userAudioMap.get(memberId);
+                if (!userAudio) {
+                    audioIdx += 1;
+                    const outputPath = path.join(process.cwd(), `/recordings/${audioIdx}-${memberId}.pcm`);
+                    userAudio = {
+                        stream: fs.createWriteStream(outputPath),
+                        timeout: null
+                    };
+                    const opusDecoder = new prism.opus.Decoder({
+                        frameSize: 960,
+                        channels: 2,
+                        rate: 48000,
+                    });
+                    audioStream.pipe(opusDecoder).pipe(userAudio.stream, { end: false });
+                    userAudioMap.set(memberId, userAudio);
+                }
 
-            const opusDecoder = new prism.opus.Decoder({
-                frameSize: 960,
-                channels: 2,
-                rate: 48000,
+                clearTimeout(userAudio.timeout);
+                userAudio.timeout = setTimeout(() => {
+                    userAudio.stream.end();
+                    userAudioMap.delete(memberId);
+                }, 2000);
             });
-
-            audioStream.pipe(opusDecoder).pipe(writeStream);
-            audioStreams.set(memberId, {
-                audioStream,
-                writeStream,
-            });
-        }
+        });
 
         await interaction.reply('Recording started!');
 
         setTimeout(() => {
-            audioStreams.forEach((streamObj) => {
-                streamObj.audioStream.destroy();
-                streamObj.writeStream.end();
+            userAudioMap.forEach((userAudio) => {
+                clearTimeout(userAudio.timeout);
+                if (userAudio.stream) {
+                    userAudio.stream.end();
+                }
             });
             connection.destroy();
             interaction.followUp('Recording is complete, and the bot has disconnected.');
-        }, 5000);
+        }, 30000);
     },
 };
