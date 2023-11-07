@@ -50,7 +50,7 @@ module.exports = {
                         channels: 2,
                         rate: 48000,
                     });
-                    audioStream.pipe(opusDecoder).pipe(userAudio.stream, { end: false });
+                    audioStream.pipe(opusDecoder).pipe(userAudio.stream, {end: false});
                     userAudioMap.set(memberId, userAudio);
                 }
 
