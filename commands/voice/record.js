@@ -1,5 +1,5 @@
-const { SlashCommandBuilder } = require('discord.js');
-const { joinVoiceChannel } = require('@discordjs/voice');
+const {SlashCommandBuilder} = require('discord.js');
+const {joinVoiceChannel} = require('@discordjs/voice');
 const fs = require('fs');
 const path = require('path');
 const prism = require('prism-media');
@@ -7,7 +7,7 @@ const prism = require('prism-media');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('record')
-        .setDescription('Joins your voice channel and starts processing your voice.'),
+        .setDescription('Joins your voice channel and starts recording.'),
     async execute(interaction) {
         if (!interaction.member.voice.channelId) {
             await interaction.reply('You need to be in a voice channel to use this command!');
@@ -26,6 +26,8 @@ module.exports = {
             selfMute: false,
         });
 
+        interaction.client.voiceConnections.set(interaction.guildId, connection);
+
         voiceChannel.members.forEach((member, memberId) => {
             const audioStream = connection.receiver.subscribe(memberId, {
                 end: {
@@ -34,7 +36,7 @@ module.exports = {
                 },
             });
 
-            audioStream.on('data', (chunk) => {
+            audioStream.on('data', () => {
                 let userAudio = userAudioMap.get(memberId);
                 if (!userAudio) {
                     audioIdx += 1;
@@ -61,16 +63,5 @@ module.exports = {
         });
 
         await interaction.reply('Recording started!');
-
-        setTimeout(() => {
-            userAudioMap.forEach((userAudio) => {
-                clearTimeout(userAudio.timeout);
-                if (userAudio.stream) {
-                    userAudio.stream.end();
-                }
-            });
-            connection.destroy();
-            interaction.followUp('Recording is complete, and the bot has disconnected.');
-        }, 30000);
     },
 };
