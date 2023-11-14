@@ -17,6 +17,14 @@ module.exports = {
         let audioIdx = 0;
         const userAudioMap = new Map();
 
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
+        const recordingsDir = path.join(process.cwd(), `/recordings/${timestamp}`);
+
+        if (!fs.existsSync(recordingsDir)){
+            fs.mkdirSync(recordingsDir, { recursive: true });
+        }
+
         const voiceChannel = interaction.member.voice.channel;
         const connection = joinVoiceChannel({
             channelId: voiceChannel.id,
@@ -40,7 +48,7 @@ module.exports = {
                 let userAudio = userAudioMap.get(memberId);
                 if (!userAudio) {
                     audioIdx += 1;
-                    const outputPath = path.join(process.cwd(), `/recordings/${audioIdx}-${memberId}.pcm`);
+                    const outputPath = path.join(recordingsDir, `/${audioIdx}-${memberId}.pcm`);
                     userAudio = {
                         stream: fs.createWriteStream(outputPath),
                         timeout: null
