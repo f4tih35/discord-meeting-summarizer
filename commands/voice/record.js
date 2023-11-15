@@ -18,11 +18,11 @@ module.exports = {
         const userAudioMap = new Map();
 
         const now = new Date();
-        const timestamp = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
-        const recordingsDir = path.join(process.cwd(), `/recordings/${timestamp}`);
+        const formattedDateTime = now.toISOString().replace(/:/g, '-').replace('T', '_').split('.')[0];
+        const recordingsPath = path.join(process.cwd(), `/recordings/${formattedDateTime}`);
 
-        if (!fs.existsSync(recordingsDir)){
-            fs.mkdirSync(recordingsDir, { recursive: true });
+        if (!fs.existsSync(recordingsPath)) {
+            fs.mkdirSync(recordingsPath, {recursive: true});
         }
 
         const voiceChannel = interaction.member.voice.channel;
@@ -48,7 +48,7 @@ module.exports = {
                 let userAudio = userAudioMap.get(memberId);
                 if (!userAudio) {
                     audioIdx += 1;
-                    const outputPath = path.join(recordingsDir, `/${audioIdx}-${memberId}.pcm`);
+                    const outputPath = path.join(recordingsPath, `${audioIdx}-${memberId}.pcm`);
                     userAudio = {
                         stream: fs.createWriteStream(outputPath),
                         timeout: null
