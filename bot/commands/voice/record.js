@@ -15,8 +15,6 @@ module.exports = {
         }
 
         let audioIdx = 0;
-        const userAudioMap = new Map();
-
         const now = new Date();
         const formattedDateTime = now.toISOString().replace(/:/g, '-').replace('T', '_').split('.')[0];
         const recordingsPath = path.join(process.cwd(), `/recordings/${formattedDateTime}`);
@@ -44,30 +42,49 @@ module.exports = {
                 },
             });
 
-            audioStream.on('data', () => {
-                let userAudio = userAudioMap.get(memberId);
-                if (!userAudio) {
-                    audioIdx += 1;
-                    const outputPath = path.join(recordingsPath, `${audioIdx}-${memberId}.pcm`);
-                    userAudio = {
-                        stream: fs.createWriteStream(outputPath),
-                        timeout: null
-                    };
-                    const opusDecoder = new prism.opus.Decoder({
-                        frameSize: 960,
-                        channels: 2,
-                        rate: 48000,
-                    });
-                    audioStream.pipe(opusDecoder).pipe(userAudio.stream, {end: false});
-                    userAudioMap.set(memberId, userAudio);
+            let lastSpokeTime = Date.now();
+            let currentStream = null;
+            let currentOpusDecoder = null;
+
+            const startNewRecording = () => {
+                if (currentStream) {
+                    currentOpusDecoder.end();
+                    currentStream.end();
                 }
 
-                clearTimeout(userAudio.timeout);
-                userAudio.timeout = setTimeout(() => {
-                    userAudio.stream.end();
-                    userAudioMap.delete(memberId);
-                }, 2000);
+                audioIdx++;
+                const outputPath = path.join(recordingsPath, `${audioIdx}-${memberId}.pcm`);
+                currentStream = fs.createWriteStream(outputPath);
+                currentOpusDecoder = new prism.opus.Decoder({frameSize: 960, channels: 2, rate: 48000});
+                currentOpusDecoder.pipe(currentStream, {end: true});
+            };
+
+            audioStream.on('data', (data) => {
+                const now = Date.now();
+                if (now - lastSpokeTime > 1000) {
+                    startNewRecording();
+                }
+                lastSpokeTime = now;
+
+                if (currentOpusDecoder) {
+                    currentOpusDecoder.write(data);
+                }
             });
+
+            audioStream.on('end', () => {
+                if (currentOpusDecoder) {
+                    currentOpusDecoder.end();
+                }
+                if (currentStream) {
+                    currentStream.end();
+                }
+            });
+
+            audioStream.on('error', (error) => {
+                console.error('Audio stream error:', error);
+            });
+
+            startNewRecording();
         });
 
         await interaction.reply('Recording started!');

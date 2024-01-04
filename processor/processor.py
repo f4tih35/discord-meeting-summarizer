@@ -1,9 +1,15 @@
-import wave
 import os
+import re
+import wave
+
+
+def custom_sort(file_name):
+    numbers = re.findall(r'^\d+', file_name)
+    return int(numbers[0]) if numbers else 0
 
 
 def combine_pcm_files(directory, output_pcm_file):
-    pcm_files = sorted([f for f in os.listdir(directory) if f.endswith('.pcm')])
+    pcm_files = sorted([f for f in os.listdir(directory) if f.endswith('.pcm')], key=custom_sort)
 
     with open(output_pcm_file, 'wb') as outfile:
         for filename in pcm_files:
@@ -22,16 +28,25 @@ def pcm_to_wav(pcm_file, wav_file, channels=2, bit_depth=16, sampling_rate=48000
         wavfile.writeframes(pcm_data)
 
 
-def start_processor():
-    directory = 'came-from-request'
+def process_audio_files(file_path):
     combined_pcm = 'combined.pcm'
     combined_wav = 'combined.wav'
 
-    combine_pcm_files(directory, combined_pcm)
+    combine_pcm_files(file_path, combined_pcm)
+    pcm_to_wav(combined_pcm, combined_wav)
+
+    print(f"Converted combined PCM to {combined_wav}")
+
+
+def start_processor(file_path):
+    combined_pcm = 'combined.pcm'
+    combined_wav = 'combined.wav'
+
+    combine_pcm_files(file_path, combined_pcm)
     pcm_to_wav(combined_pcm, combined_wav)
 
     print(f"Converted combined PCM to {combined_wav}")
 
 
 if __name__ == '__main__':
-    start_processor()
+    start_processor('/path/to/recordings')
