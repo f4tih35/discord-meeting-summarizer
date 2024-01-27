@@ -12,7 +12,7 @@ client.on("ready", () => {
 
   const table = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'entities';").get();
   if (!table['count(*)']) {
-    sql.prepare("CREATE TABLE entities (id TEXT PRIMARY KEY, sound_file_path TEXT, text_file_path TEXT);").run();
+    sql.prepare("CREATE TABLE entities (id INTEGER PRIMARY KEY AUTOINCREMENT, sound_file_path TEXT, text_file_path TEXT);").run();
     sql.prepare("CREATE UNIQUE INDEX idx_entities_id ON entities (id);").run();
     sql.pragma("synchronous = 1");
     sql.pragma("journal_mode = wal");
