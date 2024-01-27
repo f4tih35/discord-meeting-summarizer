@@ -3,6 +3,13 @@ const {joinVoiceChannel} = require('@discordjs/voice');
 const fs = require('fs');
 const path = require('path');
 const prism = require('prism-media');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./db.sqlite');
+
+const saveEntityToDatabase = (recordingPath) => {
+    const insert = sql.prepare("INSERT INTO entities (sound_file_path) VALUES (?);");
+    insert.run(recordingPath);
+};
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -77,6 +84,7 @@ module.exports = {
                 }
                 if (currentStream) {
                     currentStream.end();
+                    saveEntityToDatabase(recordingsPath);
                 }
             });
 
