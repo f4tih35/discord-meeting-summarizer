@@ -1,4 +1,4 @@
 class Config:
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:////Users/fatihmelihersoy/repos/fatih-repos/GitHub/discord-meeting-summarizer/bot/db.sqlite'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:////YOUR-DB-FILE-PATH'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
