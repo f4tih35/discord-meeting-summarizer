@@ -1,3 +1,4 @@
 class Config:
     DEBUG = True
-    RQ_DASHBOARD_REDIS_URL = 'redis://127.0.0.1:6379/1'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:////Users/fatihmelihersoy/repos/fatih-repos/GitHub/discord-meeting-summarizer/bot/db.sqlite'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False

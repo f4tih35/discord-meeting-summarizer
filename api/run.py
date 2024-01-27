@@ -1,38 +1,32 @@
-import os
-import subprocess
-
-import rq_dashboard
-from flask import Flask, request, jsonify
-from flask_rq2 import RQ
+from flask import Flask, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from config import Config
 
 app = Flask(__name__)
-app.config.from_object('config.Config')
-rq = RQ(app)
-app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
+app.config.from_object(Config)
+
+db = SQLAlchemy(app)
 
 
-@rq.job
-def process_audio_file(file_path):
-    try:
-        subprocess.run(["python", "processor/processor.py", file_path], check=True)
-    except subprocess.SubprocessError as e:
-        print(f"An error occurred during processing: {e}")
+class Entity(db.Model):
+    __tablename__ = 'entities'
+    id = db.Column(db.Integer, primary_key=True)
+    sound_file_path = db.Column(db.String)
+    text_file_path = db.Column(db.String)
 
 
-@app.route('/process-audio', methods=['POST'])
-def process_audio():
-    data = request.get_json()
-    if not data or 'file_path' not in data:
-        return jsonify({'error': 'File path not provided'}), 400
+@app.route('/process/<entity_id>', methods=['GET'])
+def process(entity_id):
+    if not entity_id:
+        return jsonify({'error': 'Entity id required'}), 404
 
-    file_path = data['file_path']
+    entity = Entity.query.filter(Entity.id == entity_id).first()
 
-    if not os.path.exists(file_path):
-        return jsonify({'error': 'File not found at the provided path'}), 404
+    if entity is None:
+        return jsonify({'error': 'Entity not found'}), 404
 
-    job = process_audio_file.queue(file_path)
-    return jsonify({'message': 'Processing queued', 'job_id': job.id})
+    return jsonify({'id': entity.id, 'message': "Processing..."})
 
 
 if __name__ == '__main__':
-    app.run(debug=app.config['DEBUG'])
+    app.run()
