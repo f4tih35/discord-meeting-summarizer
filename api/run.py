@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask
 from config import Config
 from models import db
 from utils import Utils
