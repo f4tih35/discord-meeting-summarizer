@@ -1,18 +1,18 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {Client, Collection, GatewayIntentBits} = require('discord.js');
-const {token} = require('./config.json');
+const {token, sqlitePath} = require('./config.json');
 
 const client = new Client({intents: [GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages, GatewayIntentBits.Guilds]});
 const SQLite = require("better-sqlite3");
-const sql = new SQLite("./db.sqlite");
+const sql = new SQLite(sqlitePath);
 
 client.on("ready", () => {
   console.log(`Ready! Logged in as ${client.user.tag}`);
 
   const table = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'entities';").get();
   if (!table['count(*)']) {
-    sql.prepare("CREATE TABLE entities (id INTEGER PRIMARY KEY AUTOINCREMENT, sound_file_path TEXT, text_file_path TEXT);").run();
+    sql.prepare("CREATE TABLE entities (id INTEGER PRIMARY KEY AUTOINCREMENT, pcms_file_path TEXT, wav_file_path TEXT, text_file_path TEXT);").run();
     sql.prepare("CREATE UNIQUE INDEX idx_entities_id ON entities (id);").run();
     sql.pragma("synchronous = 1");
     sql.pragma("journal_mode = wal");

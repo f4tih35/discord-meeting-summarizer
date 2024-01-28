@@ -12,10 +12,10 @@ module.exports = {
             .setRequired(true)),
     async execute(interaction) {
         const id = interaction.options.getInteger('id');
-        await interaction.reply(`Processing started for ID: ${id}...`);
+        await interaction.reply(`Processing for ID: ${id}...`);
         try {
             const response = await axios.get(`${apiEndpoint}/process/${id}`);
-            await interaction.editReply(`OK: ${JSON.stringify(response.data)}`);
+            await interaction.editReply(`${JSON.stringify(response.data)}`);
         } catch (error) {
             console.error('Error:', error);
             await interaction.editReply('There was an error trying to process recording!');

@@ -7,8 +7,9 @@ const SQLite = require('better-sqlite3');
 const sql = new SQLite('./db.sqlite');
 
 const saveEntityToDatabase = (recordingPath) => {
-    const insert = sql.prepare("INSERT INTO entities (sound_file_path) VALUES (?);");
-    insert.run(recordingPath);
+    const insert = sql.prepare("INSERT INTO entities (pcms_file_path) VALUES (?);");
+    const result = insert.run(recordingPath);
+    return result.lastInsertRowid; // Bu satırı ekleyin
 };
 
 module.exports = {
@@ -25,6 +26,7 @@ module.exports = {
         const now = new Date();
         const formattedDateTime = now.toISOString().replace(/:/g, '-').replace('T', '_').split('.')[0];
         const recordingsPath = path.join(process.cwd(), `/recordings/${formattedDateTime}`);
+        const entityId = saveEntityToDatabase(recordingsPath);
 
         if (!fs.existsSync(recordingsPath)) {
             fs.mkdirSync(recordingsPath, {recursive: true});
@@ -84,7 +86,6 @@ module.exports = {
                 }
                 if (currentStream) {
                     currentStream.end();
-                    saveEntityToDatabase(recordingsPath);
                 }
             });
 
@@ -95,6 +96,6 @@ module.exports = {
             startNewRecording();
         });
 
-        await interaction.reply('Recording started!');
+        await interaction.reply(`Recording started! ID: ${entityId}`);
     },
 };
